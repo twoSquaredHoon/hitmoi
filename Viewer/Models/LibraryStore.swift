@@ -28,6 +28,8 @@ final class LibraryStore: ObservableObject {
     init() {
         let raw = UserDefaults.standard.string(forKey: Self.directionKey) ?? ReadingDirection.rtl.rawValue
         readingDirection = ReadingDirection(rawValue: raw) ?? .rtl
+        // Ensure Documents/Books exists so Files app can show the Viewer folder.
+        try? BookStorage.ensureBooksRoot()
         load()
     }
 
