@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Pinch-zoom + pan for a single page image.
-struct ZoomablePageView: View {
-    let image: UIImage
+/// Pinch-zoom + pan for one page, or a two-page spread zoomed as a single unit.
+struct ZoomableSpreadView: View {
+    let images: [UIImage]
     var onSwipeScreenLeft: (() -> Void)?
     var onSwipeScreenRight: (() -> Void)?
 
@@ -13,24 +13,28 @@ struct ZoomablePageView: View {
 
     var body: some View {
         GeometryReader { geo in
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(width: geo.size.width, height: geo.size.height)
-                .scaleEffect(scale)
-                .offset(offset)
-                .gesture(magnificationGesture)
-                .simultaneousGesture(dragGesture)
-                .onTapGesture(count: 2) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        if scale > 1.01 {
-                            resetZoom()
-                        } else {
-                            scale = 2.5
-                            lastScale = 2.5
-                        }
+            HStack(spacing: 0) {
+                ForEach(Array(images.enumerated()), id: \.offset) { _, image in
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .scaleEffect(scale)
+            .offset(offset)
+            .gesture(magnificationGesture)
+            .simultaneousGesture(dragGesture)
+            .onTapGesture(count: 2) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    if scale > 1.01 {
+                        resetZoom()
+                    } else {
+                        scale = 2.5
+                        lastScale = 2.5
                     }
                 }
+            }
         }
     }
 

@@ -7,8 +7,18 @@ final class LibraryStore: ObservableObject {
     @Published var readingDirection: ReadingDirection {
         didSet { UserDefaults.standard.set(readingDirection.rawValue, forKey: Self.directionKey) }
     }
+    /// Show two pages side by side when the device is in landscape.
+    @Published var dualPageEnabled: Bool {
+        didSet { UserDefaults.standard.set(dualPageEnabled, forKey: Self.dualPageKey) }
+    }
+    /// 0 pairs (1,2)(3,4); 1 leaves page 1 alone and pairs (2,3)(4,5).
+    @Published var pairOffset: Int {
+        didSet { UserDefaults.standard.set(pairOffset, forKey: Self.pairOffsetKey) }
+    }
 
     private static let directionKey = "readingDirection"
+    private static let dualPageKey = "dualPageEnabled"
+    private static let pairOffsetKey = "pairOffset"
     private var pendingSaveTask: Task<Void, Never>?
 
     enum ReadingDirection: String, CaseIterable, Identifiable {
@@ -26,8 +36,11 @@ final class LibraryStore: ObservableObject {
     }
 
     init() {
-        let raw = UserDefaults.standard.string(forKey: Self.directionKey) ?? ReadingDirection.rtl.rawValue
+        let defaults = UserDefaults.standard
+        let raw = defaults.string(forKey: Self.directionKey) ?? ReadingDirection.rtl.rawValue
         readingDirection = ReadingDirection(rawValue: raw) ?? .rtl
+        dualPageEnabled = defaults.object(forKey: Self.dualPageKey) as? Bool ?? true
+        pairOffset = defaults.integer(forKey: Self.pairOffsetKey) == 1 ? 1 : 0
         // Ensure Documents/Books exists so Files app can show the Viewer folder.
         try? BookStorage.ensureBooksRoot()
         load()

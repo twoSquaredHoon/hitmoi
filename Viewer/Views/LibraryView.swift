@@ -125,32 +125,36 @@ private struct BookCoverCell: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color(white: 0.12))
-
-                if let cover {
-                    Image(uiImage: cover)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Image(systemName: book.kind == .pdf ? "doc.richtext" : "photo.on.rectangle")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
+            // A fixed-size backdrop owns the layout so unusually tall or wide
+            // covers get cropped instead of stretching the grid cell.
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(white: 0.12))
+                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+                .overlay {
+                    if let cover {
+                        Image(uiImage: cover)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Image(systemName: book.kind == .pdf ? "doc.richtext" : "photo.on.rectangle")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                    }
                 }
-            }
-            .frame(height: 200)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Text(book.title)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.primary)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             Text("\(book.pageCount) pages")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .task(id: book.id) {
             cover = await loadCover()
