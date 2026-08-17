@@ -5,6 +5,18 @@ enum BookKind: String, Codable, Hashable {
     case pdf
 }
 
+struct LibraryFolder: Identifiable, Codable, Hashable {
+    let id: UUID
+    var name: String
+    let createdAt: Date
+
+    init(id: UUID = UUID(), name: String, createdAt: Date = Date()) {
+        self.id = id
+        self.name = name
+        self.createdAt = createdAt
+    }
+}
+
 struct Book: Identifiable, Codable, Hashable {
     let id: UUID
     var title: String
@@ -15,6 +27,8 @@ struct Book: Identifiable, Codable, Hashable {
     /// Relative path under Documents/Books/<id>/…
     let storagePath: String
     var pageCount: Int
+    /// nil = unfiled (library root).
+    var folderID: UUID?
 
     init(
         id: UUID = UUID(),
@@ -23,7 +37,8 @@ struct Book: Identifiable, Codable, Hashable {
         createdAt: Date = Date(),
         lastPage: Int = 0,
         storagePath: String,
-        pageCount: Int
+        pageCount: Int,
+        folderID: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -32,6 +47,7 @@ struct Book: Identifiable, Codable, Hashable {
         self.lastPage = lastPage
         self.storagePath = storagePath
         self.pageCount = pageCount
+        self.folderID = folderID
     }
 
     var bookDirectoryURL: URL {
@@ -41,6 +57,12 @@ struct Book: Identifiable, Codable, Hashable {
     var contentURL: URL {
         bookDirectoryURL.appendingPathComponent(storagePath)
     }
+}
+
+/// On-disk library format. Older installs only stored a bare book array.
+struct LibrarySnapshot: Codable {
+    var folders: [LibraryFolder]
+    var books: [Book]
 }
 
 enum BookStorage {

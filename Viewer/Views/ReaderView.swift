@@ -16,6 +16,7 @@ struct ReaderView: View {
     @State private var maxPixelSize: CGFloat = 2048
     @State private var loadGeneration = 0
     @State private var isLandscape = false
+    @State private var isAutoFlipping = false
 
     init(book: Book) {
         self.book = book
@@ -79,8 +80,22 @@ struct ReaderView: View {
             Task { await presentCurrent(isInitial: false) }
         }
         .onDisappear {
+            isAutoFlipping = false
             library.flush()
         }
+        .task(id: autoFlipTaskID) {
+            guard isAutoFlipping else { return }
+            let nanos = UInt64(max(library.autoFlipSeconds, 1)) * 1_000_000_000
+            try? await Task.sleep(nanoseconds: nanos)
+            guard !Task.isCancelled, isAutoFlipping else { return }
+            if !turnForwardIfPossible() {
+                isAutoFlipping = false
+            }
+        }
+    }
+
+    private var autoFlipTaskID: String {
+        "\(isAutoFlipping)-\(currentPage)-\(library.autoFlipSeconds)-\(isDualActive)-\(library.pairOffset)"
     }
 
     @ViewBuilder
@@ -149,7 +164,22 @@ struct ReaderView: View {
 
                 Spacer()
 
-                readerMenu
+                HStack(spacing: 8) {
+                    Button {
+                        isAutoFlipping.toggle()
+                        if isAutoFlipping {
+                            showChrome = false
+                        }
+                    } label: {
+                        Image(systemName: isAutoFlipping ? "pause.fill" : "play.fill")
+                            .font(.body.weight(.semibold))
+                            .padding(10)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .accessibilityLabel(isAutoFlipping ? "Stop auto" : "Auto")
+
+                    readerMenu
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -176,6 +206,14 @@ struct ReaderView: View {
 
     private var readerMenu: some View {
         Menu {
+            Toggle("Auto flip", isOn: $isAutoFlipping)
+
+            Picker("Auto interval", selection: $library.autoFlipSeconds) {
+                ForEach(LibraryStore.autoFlipChoices, id: \.self) { seconds in
+                    Text("Every \(seconds)s").tag(seconds)
+                }
+            }
+
             Toggle("Two pages in landscape", isOn: $library.dualPageEnabled)
 
             Button {
@@ -249,19 +287,26 @@ struct ReaderView: View {
     }
 
     private func turn(forward: Bool) {
-        let pages = spreadPages(for: currentPage)
-        guard let first = pages.first, let last = pages.last else { return }
-
         if forward {
-            let next = last + 1
-            guard next < pageCount else { return }
-            currentPage = next
+            guard turnForwardIfPossible() else { return }
         } else {
+            let pages = spreadPages(for: currentPage)
+            guard let first = pages.first else { return }
             let previous = first - 1
             guard previous >= 0 else { return }
             currentPage = spreadPages(for: previous).first ?? previous
         }
         showChrome = false
+    }
+
+    @discardableResult
+    private func turnForwardIfPossible() -> Bool {
+        let pages = spreadPages(for: currentPage)
+        guard let last = pages.last else { return false }
+        let next = last + 1
+        guard next < pageCount else { return false }
+        currentPage = next
+        return true
     }
 
     private func presentCurrent(isInitial: Bool) async {
